@@ -1,0 +1,255 @@
+class Tool:
+    def __init__(self, name: str, mark: str, measurement_limit: float, date: str):
+        self.name = name
+        self.mark = mark
+        self.measurement_limit = measurement_limit
+        self.date = date
+    def get_name(self):
+        return self.name
+    def get_mark(self):
+        return self.mark
+    def get_measurement_limit(self):
+        return self.measurement_limit
+    def get_date(self):
+        return self.date
+    def print(self):
+        print(self.name, self.mark, self.measurement_limit, self.date)
+
+
+class TreeNode:
+    def __init__(self,tool: Tool,left=None,right=None,parent=None):
+        self.tool = tool
+        self.leftChild = left
+        self.rightChild = right
+        self.parent = parent
+
+
+
+    def hasLeftChild(self):
+        return self.leftChild
+    def hasRightChild(self):
+        return self.rightChild
+    def isLeftChild(self):
+        return self.parent and self.parent.leftChild == self
+    def isRightChild(self):
+        return self.parent and self.parent.rightChild == self
+    def isRoot(self):
+        return not self.parent
+    def isLeaf(self):
+        return not (self.rightChild or self.leftChild)
+    def hasAnyChildren(self):
+        return self.rightChild or self.leftChild
+    def hasBothChildren(self):
+        return self.rightChild and self.leftChild
+    def replaceNodeData(self,tool: Tool,lc,rc):
+        self.tool = tool
+        self.leftChild = lc
+        self.rightChild = rc
+        if self.hasLeftChild():
+            self.leftChild.parent = self
+        if self.hasRightChild():
+            self.rightChild.parent = self
+
+
+class BinaryTree:
+    def __init__(self):
+        self.root = None
+        self.size = 0
+    def length(self):
+        return self.size
+    def __len__(self):
+        return self.size
+    def put(self,tool: Tool):
+        if self.root:
+            self._put(tool,self.root)
+        else:
+            self.root = TreeNode(tool)
+        self.size = self.size + 1
+    def _put(self,tool: Tool,currentNode):
+        if tool.mark < currentNode.tool.mark:    #put by mark!!!!!!
+            if currentNode.hasLeftChild():
+                self._put(tool,currentNode.leftChild)
+            else:
+                currentNode.leftChild = TreeNode(tool,parent=currentNode)
+        else:
+            if currentNode.hasRightChild():
+                self._put(tool,currentNode.rightChild)
+            else:
+                currentNode.rightChild = TreeNode(tool,parent=currentNode)
+    def __setitem__(self,tool):
+        self.put(tool)
+    def get(self,name):
+        if self.root:
+            res = self._get(name,self.root)
+            if res:
+                return res.tool
+            else:
+                return None
+        else:
+            return None
+    def _get(self,name,currentNode):
+        if not currentNode:
+            return None
+        elif currentNode.tool.name == name:
+            return currentNode
+        elif name < currentNode.tool.name:
+            return self._get(name,currentNode.leftChild)
+        else:
+            return self._get(name,currentNode.rightChild)
+
+    def _get_by_measurement_limit(self,measurement_limit, currentNode):
+        if not currentNode:
+            return None
+        elif currentNode.tool.measurement_limit == measurement_limit:
+            return currentNode
+        elif measurement_limit < currentNode.tool.measurement_limit:
+            return self._get_by_measurement_limit(measurement_limit,currentNode.leftChild)
+        else:
+            return self._get_by_measurement_limit(measurement_limit,currentNode.rightChild)
+    def _get_by_date(self,date,currentNode):
+        if not currentNode:
+            return None
+        elif currentNode.tool.date == date:
+            return currentNode
+        elif date < currentNode.tool.date:
+            return self._get_by_date(date,currentNode.leftChild)
+        else:
+            return self._get_by_date(date,currentNode.rightChild)
+    def __getitem__(self,name):
+        return self.get(name)
+    def __contains__(self,name):
+        if self._get(name,self.root):
+            return True
+        else:
+            return False
+    def delete_by_date(self,date):
+        if self.size > 1:
+            nodeToRemove = self._get_by_date(date,self.root)
+            if nodeToRemove:
+                self.remove(nodeToRemove)
+                self.size = self.size-1
+            else:
+                return 0
+        elif self.size == 1 and self.root.date == date:
+            self.root = None
+            self.size = self.size - 1
+        else:
+            return 0
+    def __delitem__(self,date):
+        self.delete_by_date(date)
+    def spliceOut(self):
+        if self.isLeaf():
+            if self.isLeftChild():
+                self.parent.leftChild = None
+            else:
+                self.parent.rightChild = None
+        elif self.hasAnyChildren():
+            if self.hasLeftChild():
+                if self.isLeftChild():
+                    self.parent.leftChild = self.leftChild
+                else:
+                    self.parent.rightChild = self.leftChild
+                self.leftChild.parent = self.parent
+            else:
+                if self.isLeftChild():
+                    self.parent.leftChild = self.rightChild
+                else:
+                    self.parent.rightChild = self.rightChild
+                self.rightChild.parent = self.parent
+    def findSuccessor(self):
+        succ = None
+        if self.hasRightChild():
+            succ = self.rightChild.findMin()
+        else:
+            if self.parent:
+                if self.isLeftChild():
+                    succ = self.parent
+                else:
+                    self.parent.rightChild = None
+                    succ = self.parent.findSuccessor()
+                    self.parent.rightChild = self
+        return succ
+    def findMin(self):
+        current = self
+        while current.hasLeftChild():
+            current = current.leftChild
+        return current
+    def remove(self,currentNode):
+        if currentNode.isLeaf(): #leaf
+            if currentNode == currentNode.parent.leftChild:
+                currentNode.parent.leftChild = None
+            else:
+                currentNode.parent.rightChild = None
+        elif currentNode.hasBothChildren(): #interior
+            succ = currentNode.findSuccessor()
+            succ.spliceOut()
+            currentNode.tool = succ.tool
+
+        else: # this node has one child
+            if currentNode.hasLeftChild():
+                if currentNode.isLeftChild():
+                    currentNode.leftChild.parent = currentNode.parent
+                    currentNode.parent.leftChild = currentNode.leftChild
+                elif currentNode.isRightChild():
+                    currentNode.leftChild.parent = currentNode.parent
+                    currentNode.parent.rightChild = currentNode.leftChild
+                else:
+                    currentNode.replaceNodeData(currentNode.leftChild.tool,
+                                                currentNode.leftChild.leftChild,
+                                                currentNode.leftChild.rightChild)
+            else:
+                if currentNode.isLeftChild():
+                    currentNode.rightChild.parent = currentNode.parent
+                    currentNode.parent.leftChild = currentNode.rightChild
+                elif currentNode.isRightChild():
+                    currentNode.rightChild.parent = currentNode.parent
+                    currentNode.parent.rightChild = currentNode.rightChild
+                else:
+                    currentNode.replaceNodeData(currentNode.leftChild.tool,
+                                                currentNode.leftChild.leftChild,
+                                                currentNode.leftChild.rightChild)
+
+
+    def delete_all_date(self, date):
+        x = None
+        while(x!=0):
+            x = self.delete_by_date("2006")
+    def print_with_limitation(self, limit):
+        currentNode = self.root;
+        self._checkTree(currentNode, limit)
+    def _checkTree(self, currentNode, limit):
+        if (currentNode == None):
+            return;
+        if(currentNode.tool.measurement_limit>limit):
+            currentNode.tool.print()
+        self._checkTree(currentNode.leftChild, limit);
+        self._checkTree(currentNode.rightChild, limit);
+
+
+
+
+
+
+
+
+
+
+mytree = BinaryTree()
+red = Tool("red", "BX-11", 10, "2005")
+blue = Tool("blue", "BX-11", 100, "2005")
+yellow = Tool("yellow", "BX-11", 30, "2006")
+at = Tool("at", "BX-11", 20, "2006")
+at1 = Tool("at1", "BX-11", 200, "2006")
+mytree.__setitem__(red)
+mytree.__setitem__(blue)
+mytree.__setitem__(yellow)
+mytree.__setitem__(at)
+mytree.__setitem__(at1)
+
+print("Size:", mytree.size)
+print("out:")
+mytree.print_with_limitation(40)
+mytree.delete_all_date("2006")
+print("Size after delete:", mytree.size)
+
+
